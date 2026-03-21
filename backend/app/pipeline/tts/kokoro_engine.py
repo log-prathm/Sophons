@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import tempfile
 from pathlib import Path
 
 import torch
@@ -49,3 +50,6 @@ class KokoroTTSEngine(TTSEngine):
         sf.write(output_path, samples, sample_rate)
         return output_path
 
+    def warmup(self) -> None:
+        with tempfile.NamedTemporaryFile(suffix=".wav") as handle:
+            self.synthesize("Ready.", Path(handle.name))

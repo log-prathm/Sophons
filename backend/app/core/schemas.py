@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 ComponentKind = Literal["stt", "llm", "tts"]
 MessageRole = Literal["system", "user", "assistant"]
+FieldInputType = Literal["text", "textarea", "number", "boolean", "select"]
 
 
 class HardwareProfile(BaseModel):
@@ -35,6 +36,39 @@ class ModelCatalog(BaseModel):
     llm: list[ModelManifest]
     tts: list[ModelManifest]
     hardware: HardwareProfile
+
+
+class ModelConfigOption(BaseModel):
+    label: str
+    value: Any
+
+
+class ModelConfigField(BaseModel):
+    key: str
+    label: str
+    input_type: FieldInputType
+    description: str | None = None
+    value: Any = None
+    placeholder: str | None = None
+    min: float | None = None
+    max: float | None = None
+    step: float | None = None
+    options: list[ModelConfigOption] = Field(default_factory=list)
+
+
+class ModelConfigEditor(BaseModel):
+    component: ComponentKind
+    manifest: ModelManifest
+    fields: list[ModelConfigField]
+    manifest_path: str
+
+
+class ModelConfigUpdateRequest(BaseModel):
+    config: dict[str, Any]
+
+
+class ModelConfigSaveResponse(BaseModel):
+    editor: ModelConfigEditor
 
 
 class PipelineStartRequest(BaseModel):

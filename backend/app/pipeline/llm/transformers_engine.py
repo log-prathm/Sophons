@@ -59,6 +59,7 @@ class TransformersQwenEngine(LLMEngine):
         self.max_new_tokens = int(manifest.config.get("max_new_tokens", settings.llm_max_new_tokens))
         self.temperature = float(manifest.config.get("temperature", settings.llm_temperature))
         self.top_p = float(manifest.config.get("top_p", settings.llm_top_p))
+        self.do_sample = bool(manifest.config.get("do_sample", settings.llm_do_sample))
         self.repetition_penalty = float(
             manifest.config.get("repetition_penalty", settings.llm_repetition_penalty)
         )
@@ -69,28 +70,14 @@ class TransformersQwenEngine(LLMEngine):
             messages.append({"role": "system", "content": system_prompt.strip()})
         messages.extend({"role": item.role, "content": item.content} for item in history)
 
-        prompt = self._format_prompt(messages)
-        inputs = self.tokenizer(prompt, return_tensors="pt")
-        inputs = {
-            key: value.to(self.device)
-            for key, value in inputs.items()
-        }
+        return self._generate_from_messages(messages)
 
-        generate_kwargs = {
-            "max_new_tokens": self.max_new_tokens,
-            "do_sample": True,
-            "temperature": self.temperature,
-            "top_p": self.top_p,
-            "repetition_penalty": self.repetition_penalty,
-            "pad_token_id": self.tokenizer.pad_token_id,
-        }
-
-        with torch.inference_mode():
-            generated = self.model.generate(**inputs, **generate_kwargs)
-
-        new_tokens = generated[:, inputs["input_ids"].shape[1] :]
-        text = self.tokenizer.batch_decode(new_tokens, skip_special_tokens=True)[0]
-        return text.strip()
+    def warmup(self) -> None:
+        self._generate_from_messages(
+            [{"role": "system", "content": "You are a voice assistant."}, {"role": "user", "content": "Reply with ready."}],
+            max_new_tokens=8,
+            do_sample=False,
+        )
 
     def close(self) -> None:
         if hasattr(self, "model"):
@@ -112,3 +99,33 @@ class TransformersQwenEngine(LLMEngine):
         lines.append("ASSISTANT:")
         return "\n".join(lines)
 
+    def _generate_from_messages(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_new_tokens: int | None = None,
+        do_sample: bool | None = None,
+    ) -> str:
+        prompt = self._format_prompt(messages)
+        inputs = self.tokenizer(prompt, return_tensors="pt")
+        inputs = {key: value.to(self.device) for key, value in inputs.items()}
+
+        sampling_enabled = self.do_sample if do_sample is None else do_sample
+        generate_kwargs = {
+            "max_new_tokens": max_new_tokens or self.max_new_tokens,
+            "do_sample": sampling_enabled,
+            "use_cache": True,
+            "pad_token_id": self.tokenizer.pad_token_id,
+            "eos_token_id": self.tokenizer.eos_token_id,
+            "repetition_penalty": self.repetition_penalty,
+        }
+        if sampling_enabled:
+            generate_kwargs["temperature"] = self.temperature
+            generate_kwargs["top_p"] = self.top_p
+
+        with torch.inference_mode():
+            generated = self.model.generate(**inputs, **generate_kwargs)
+
+        new_tokens = generated[:, inputs["input_ids"].shape[1] :]
+        text = self.tokenizer.batch_decode(new_tokens, skip_special_tokens=True)[0]
+        return text.strip()

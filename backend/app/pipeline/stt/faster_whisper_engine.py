@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import tempfile
+import wave
 from pathlib import Path
 
 from backend.app.core.schemas import ModelManifest
@@ -40,3 +42,11 @@ class FasterWhisperEngine(STTEngine):
         text = " ".join(segment.text.strip() for segment in segments if segment.text.strip())
         return text.strip()
 
+    def warmup(self) -> None:
+        with tempfile.NamedTemporaryFile(suffix=".wav") as handle:
+            with wave.open(handle.name, "wb") as wav_file:
+                wav_file.setnchannels(1)
+                wav_file.setsampwidth(2)
+                wav_file.setframerate(16000)
+                wav_file.writeframes(b"\x00\x00" * 16000)
+            self.transcribe(Path(handle.name))

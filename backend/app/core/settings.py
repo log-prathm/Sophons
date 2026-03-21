@@ -18,13 +18,16 @@ class Settings(BaseSettings):
             "http://127.0.0.1:5173",
         ]
     )
-    conversation_window: int = 12
+    conversation_window: int = 8
     cpu_threads: int = 8
-    llm_max_new_tokens: int = 192
-    llm_temperature: float = 0.8
+    llm_max_new_tokens: int = 80
+    llm_temperature: float = 0.2
     llm_top_p: float = 0.9
     llm_repetition_penalty: float = 1.05
+    llm_do_sample: bool = False
+    engine_idle_ttl_seconds: int = 600
     tts_default_format: str = "wav"
+    llama_cpp_root: Path = Path("/home/prathmesh/Desktop/llama.cpp/llama.cpp")
 
     @property
     def project_root(self) -> Path:
@@ -58,11 +61,19 @@ class Settings(BaseSettings):
     def sessions_dir(self) -> Path:
         return self.runtime_dir / "sessions"
 
+    @property
+    def llama_cpp_bin_dir(self) -> Path:
+        return self.llama_cpp_root / "build" / "bin"
+
+    @property
+    def llama_cpp_logs_dir(self) -> Path:
+        return self.runtime_dir / "llama_cpp"
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     settings = Settings()
     settings.audio_dir.mkdir(parents=True, exist_ok=True)
     settings.sessions_dir.mkdir(parents=True, exist_ok=True)
+    settings.llama_cpp_logs_dir.mkdir(parents=True, exist_ok=True)
     return settings
-

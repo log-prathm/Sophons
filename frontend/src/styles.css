@@ -23,10 +23,18 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  height: 100%;
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow: hidden;
+  scrollbar-gutter: stable;
   background:
     radial-gradient(circle at top left, rgba(204, 107, 48, 0.14), transparent 24%),
     radial-gradient(circle at top right, rgba(15, 111, 90, 0.16), transparent 25%),
@@ -48,9 +56,10 @@ button {
 }
 
 .app-shell {
-  min-height: 100vh;
+  height: 100vh;
   display: grid;
   grid-template-columns: 320px 1fr;
+  overflow: hidden;
 }
 
 .sidebar {
@@ -61,6 +70,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  min-height: 0;
 }
 
 .sidebar-header {
@@ -94,6 +104,7 @@ button {
   gap: 0.65rem;
   overflow: auto;
   padding-right: 0.25rem;
+  min-height: 0;
 }
 
 .conversation-item,
@@ -142,6 +153,10 @@ button {
   padding: 1.4rem;
   display: grid;
   gap: 1rem;
+  min-height: 0;
+  overflow: auto;
+  align-content: start;
+  scrollbar-gutter: stable;
 }
 
 .hero {
@@ -189,6 +204,10 @@ button {
   padding: 1.15rem;
 }
 
+.prompt-panel {
+  display: grid;
+}
+
 .panel-header {
   display: flex;
   justify-content: space-between;
@@ -228,6 +247,7 @@ button {
 }
 
 .field select,
+.field input,
 .field textarea,
 .range-row {
   width: 100%;
@@ -238,6 +258,7 @@ button {
 }
 
 .field select,
+.field input,
 .field textarea {
   padding: 0.85rem 0.95rem;
 }
@@ -263,6 +284,10 @@ button {
   margin-top: 1rem;
 }
 
+.button-row-wrap {
+  flex-wrap: wrap;
+}
+
 .primary-button,
 .ghost-button {
   border-radius: 999px;
@@ -279,6 +304,14 @@ button {
 .ghost-button {
   background: var(--accent-soft);
   color: var(--accent-dark);
+}
+
+.sidebar-utility {
+  width: 100%;
+}
+
+.compact-button {
+  padding: 0.62rem 0.9rem;
 }
 
 .primary-button:hover,
@@ -316,6 +349,95 @@ button {
   border-radius: inherit;
   background: linear-gradient(90deg, var(--signal), var(--accent));
   transition: width 120ms ease;
+}
+
+.hyper-hero {
+  padding: 1rem 1.15rem;
+}
+
+.hyper-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.hyper-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.hyper-card {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+}
+
+.hyper-fields {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.manifest-path {
+  padding: 0.85rem 0.95rem;
+  border-radius: 16px;
+  border: 1px dashed var(--line);
+  background: rgba(255, 250, 240, 0.7);
+  color: var(--muted);
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+
+.field-help {
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.toggle-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel-strong);
+}
+
+.toggle-field span {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.toggle-field strong {
+  font-size: 0.96rem;
+}
+
+.toggle-field small {
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.toggle-field input {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.compact-empty {
+  padding: 0.4rem 0;
+}
+
+.success-banner,
+.error-banner {
+  border-radius: 18px;
+  padding: 0.9rem 1rem;
+}
+
+.success-banner {
+  background: rgba(15, 111, 90, 0.1);
+  border: 1px solid rgba(15, 111, 90, 0.18);
+  color: var(--accent-dark);
 }
 
 .metric-grid {
@@ -395,6 +517,7 @@ button {
   display: flex;
   flex-direction: column;
   min-height: 52vh;
+  min-width: 0;
 }
 
 .session-strip {
@@ -418,6 +541,8 @@ button {
   display: grid;
   gap: 0.85rem;
   padding-top: 1rem;
+  min-height: 0;
+  overflow: auto;
 }
 
 .message {
@@ -485,6 +610,10 @@ button {
     grid-template-columns: 1fr;
   }
 
+  .hyper-grid {
+    grid-template-columns: 1fr;
+  }
+
   .metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -502,6 +631,10 @@ button {
 
   .hero-status {
     align-items: start;
+  }
+
+  .hyper-toolbar {
+    display: grid;
   }
 
   .button-row {

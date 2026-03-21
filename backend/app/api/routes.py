@@ -6,6 +6,9 @@ from fastapi.responses import FileResponse
 from backend.app.core.schemas import (
     LiveMetrics,
     ModelCatalog,
+    ModelConfigEditor,
+    ModelConfigSaveResponse,
+    ModelConfigUpdateRequest,
     PipelineStartRequest,
     PipelineStartResponse,
     SessionListItem,
@@ -50,6 +53,36 @@ def get_live_metrics() -> LiveMetrics:
 @router.get("/models", response_model=ModelCatalog)
 def list_models(registry: ModelRegistry = Depends(get_model_registry)) -> ModelCatalog:
     return registry.discover()
+
+
+@router.get("/models/{component}/{model_id}/hyperparameters", response_model=ModelConfigEditor)
+def get_model_hyperparameters(
+    component: str,
+    model_id: str,
+    registry: ModelRegistry = Depends(get_model_registry),
+) -> ModelConfigEditor:
+    try:
+        return registry.config_editor(component, model_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.put("/models/{component}/{model_id}/hyperparameters", response_model=ModelConfigSaveResponse)
+def update_model_hyperparameters(
+    component: str,
+    model_id: str,
+    payload: ModelConfigUpdateRequest,
+    registry: ModelRegistry = Depends(get_model_registry),
+    service: PipelineService = Depends(get_pipeline_service),
+) -> ModelConfigSaveResponse:
+    try:
+        editor = registry.save_config(component, model_id, payload.config)
+        service.invalidate_engine(component, model_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return ModelConfigSaveResponse(editor=editor)
 
 
 @router.get("/sessions", response_model=list[SessionListItem])

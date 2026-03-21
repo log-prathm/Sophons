@@ -23,6 +23,7 @@ from backend.app.core.schemas import (
 )
 from backend.app.core.settings import Settings
 from backend.app.pipeline.base import LLMEngine, STTEngine, TTSEngine
+from backend.app.pipeline.llm.llama_cpp_engine import LlamaCppServerEngine
 from backend.app.pipeline.llm.transformers_engine import TransformersQwenEngine
 from backend.app.pipeline.stt.faster_whisper_engine import FasterWhisperEngine
 from backend.app.pipeline.tts.kokoro_engine import KokoroTTSEngine
@@ -53,6 +54,9 @@ class PipelineService:
         self.sessions: dict[str, SessionRuntime] = {}
         self._engine_cache: dict[str, Any] = {}
         self._engine_refs: dict[str, int] = {}
+        self._warmed_engines: set[str] = set()
+        self._engine_idle_since: dict[str, float] = {}
+        self._invalidated_engines: set[str] = set()
 
     async def start_session(self, payload: PipelineStartRequest) -> SessionState:
         now = _utcnow()
@@ -77,6 +81,9 @@ class PipelineService:
             stt_engine = await asyncio.to_thread(self._acquire_engine, "stt", stt_model)
             llm_engine = await asyncio.to_thread(self._acquire_engine, "llm", llm_model)
             tts_engine = await asyncio.to_thread(self._acquire_engine, "tts", tts_model)
+            await asyncio.to_thread(self._warm_engine, "stt", stt_model, stt_engine)
+            await asyncio.to_thread(self._warm_engine, "llm", llm_model, llm_engine)
+            await asyncio.to_thread(self._warm_engine, "tts", tts_model, tts_engine)
             session_state.status = "ready"
             session_state.updated_at = _utcnow()
             runtime = SessionRuntime(
@@ -118,6 +125,14 @@ class PipelineService:
         if session is None:
             raise KeyError(f"Session '{session_id}' was not found.")
         return session
+
+    def invalidate_engine(self, component: str, model_id: str) -> None:
+        key = f"{component}:{model_id}"
+        if self._engine_refs.get(key, 0) > 0:
+            self._invalidated_engines.add(key)
+            return
+        if key in self._engine_cache:
+            self._dispose_engine(key)
 
     async def process_audio_turn(self, session_id: str, audio_file: UploadFile) -> TurnResponse:
         session = self._get_runtime(session_id)
@@ -164,9 +179,13 @@ class PipelineService:
 
         llm_history = session.state.conversation_history[-self.settings.conversation_window :]
         llm_started = perf_counter()
+        effective_system_prompt = _compose_system_prompt(
+            session.state.system_prompt,
+            session.state.tts_model,
+        )
         assistant_text = await asyncio.to_thread(
             session.llm_engine.generate,
-            session.state.system_prompt,
+            effective_system_prompt,
             llm_history,
         )
         llm_ms = (perf_counter() - llm_started) * 1000
@@ -212,30 +231,74 @@ class PipelineService:
         return target_path
 
     def _acquire_engine(self, component: str, manifest: ModelManifest) -> Any:
-        key = f"{component}:{manifest.id}"
+        key = self._engine_key(component, manifest)
+        self._evict_idle_engines(component, keep_key=key)
         if key not in self._engine_cache:
             self._engine_cache[key] = self._build_engine(component, manifest)
             self._engine_refs[key] = 0
+        self._engine_idle_since.pop(key, None)
         self._engine_refs[key] += 1
         return self._engine_cache[key]
 
     def _release_engine(self, component: str, manifest: ModelManifest) -> None:
-        key = f"{component}:{manifest.id}"
+        key = self._engine_key(component, manifest)
         refs = self._engine_refs.get(key, 0)
         if refs <= 1:
-            engine = self._engine_cache.pop(key, None)
-            self._engine_refs.pop(key, None)
-            if engine and hasattr(engine, "close"):
-                with suppress(Exception):
-                    engine.close()
+            if key in self._invalidated_engines:
+                self._invalidated_engines.discard(key)
+                self._dispose_engine(key)
+                return
+            if key in self._engine_cache:
+                self._engine_refs[key] = 0
+                self._engine_idle_since[key] = perf_counter()
             return
         self._engine_refs[key] = refs - 1
+
+    def _warm_engine(self, component: str, manifest: ModelManifest, engine: Any) -> None:
+        key = self._engine_key(component, manifest)
+        if key in self._warmed_engines:
+            return
+        if hasattr(engine, "warmup"):
+            engine.warmup()
+        self._warmed_engines.add(key)
+
+    def _engine_key(self, component: str, manifest: ModelManifest) -> str:
+        return f"{component}:{manifest.id}"
+
+    def _evict_idle_engines(self, component: str, *, keep_key: str) -> None:
+        now = perf_counter()
+        ttl_seconds = max(self.settings.engine_idle_ttl_seconds, 0)
+        for key in list(self._engine_cache.keys()):
+            if not key.startswith(f"{component}:") or key == keep_key:
+                continue
+            if self._engine_refs.get(key, 0) > 0:
+                continue
+            self._dispose_engine(key)
+
+        if keep_key in self._engine_cache:
+            return
+
+        idle_since = self._engine_idle_since.get(keep_key)
+        if idle_since is not None and (ttl_seconds == 0 or now - idle_since >= ttl_seconds):
+            self._dispose_engine(keep_key)
+
+    def _dispose_engine(self, key: str) -> None:
+        engine = self._engine_cache.pop(key, None)
+        self._engine_refs.pop(key, None)
+        self._engine_idle_since.pop(key, None)
+        self._invalidated_engines.discard(key)
+        self._warmed_engines.discard(key)
+        if engine and hasattr(engine, "close"):
+            with suppress(Exception):
+                engine.close()
 
     def _build_engine(self, component: str, manifest: ModelManifest) -> Any:
         if component == "stt" and manifest.provider == "faster_whisper":
             return FasterWhisperEngine(manifest, self.settings)
-        if component == "llm":
+        if component == "llm" and manifest.provider == "transformers_qwen":
             return TransformersQwenEngine(manifest, self.settings)
+        if component == "llm" and manifest.provider == "llama_cpp_gguf":
+            return LlamaCppServerEngine(manifest, self.settings)
         if component == "tts" and manifest.provider == "kokoro_onnx":
             return KokoroTTSEngine(manifest)
         if component == "tts" and manifest.provider == "melo":
@@ -251,9 +314,30 @@ class PipelineService:
 
 DEFAULT_SYSTEM_PROMPT = (
     "You are a concise, warm local voice assistant running on a personal laptop. "
-    "Answer clearly, keep latency low, and preserve useful conversational context across turns."
+    "Answer in one or two short sentences unless the user explicitly asks for more detail. "
+    "Avoid emojis, keep latency low, and preserve useful conversational context across turns."
 )
 
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _compose_system_prompt(system_prompt: str, tts_model: ModelManifest) -> str:
+    style_prompt = str(tts_model.config.get("style_prompt", "") or "").strip()
+    if not style_prompt:
+        return system_prompt
+
+    return "\n".join(
+        [
+            system_prompt.strip(),
+            "",
+            "Speech delivery guidance for the active TTS voice:",
+            style_prompt,
+            (
+                "Write the answer so it sounds natural when spoken aloud. "
+                "Use wording, rhythm, and punctuation that support the requested delivery style, "
+                "but do not mention these instructions explicitly."
+            ),
+        ]
+    ).strip()

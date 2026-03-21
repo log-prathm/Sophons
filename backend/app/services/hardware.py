@@ -35,7 +35,7 @@ def detect_hardware(settings: Settings) -> HardwareProfile:
 
     notes = [
         "STT is pinned to CPU with 8 threads to keep the system responsive.",
-        "LLM is loaded in 8-bit on GPU to fit an RTX 4060 8 GB laptop profile.",
+        "LLM supports both Transformers int8 and llama.cpp GGUF Q4/Q6 paths for the RTX 4060 8 GB profile.",
         "Melo is the verified GPU TTS path on this machine, while Kokoro remains available as an ONNX option.",
     ]
     if not torch.cuda.is_available():
@@ -46,7 +46,7 @@ def detect_hardware(settings: Settings) -> HardwareProfile:
         cpu_threads=settings.cpu_threads,
         gpu_name=gpu_name,
         gpu_target="NVIDIA GeForce RTX 4060 Laptop GPU 8 GB",
-        llm_quantization="int8 via bitsandbytes",
+        llm_quantization="int8 via bitsandbytes or GGUF via llama.cpp",
         notes=notes,
     )
 

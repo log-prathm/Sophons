@@ -12,6 +12,37 @@ export interface ModelManifest {
   config: Record<string, unknown>;
 }
 
+export interface ModelConfigOption {
+  label: string;
+  value: unknown;
+}
+
+export type FieldInputType = "text" | "textarea" | "number" | "boolean" | "select";
+
+export interface ModelConfigField {
+  key: string;
+  label: string;
+  input_type: FieldInputType;
+  description?: string | null;
+  value: unknown;
+  placeholder?: string | null;
+  min?: number | null;
+  max?: number | null;
+  step?: number | null;
+  options: ModelConfigOption[];
+}
+
+export interface ModelConfigEditor {
+  component: ComponentKind;
+  manifest: ModelManifest;
+  fields: ModelConfigField[];
+  manifest_path: string;
+}
+
+export interface ModelConfigSaveResponse {
+  editor: ModelConfigEditor;
+}
+
 export interface HardwareProfile {
   cpu_model: string;
   cpu_threads: number;
@@ -107,6 +138,30 @@ export function getApiBase(): string {
 
 export function fetchModels(): Promise<ModelCatalog> {
   return request<ModelCatalog>("/api/models");
+}
+
+export function fetchModelHyperparameters(
+  component: ComponentKind,
+  modelId: string,
+): Promise<ModelConfigEditor> {
+  return request<ModelConfigEditor>(`/api/models/${component}/${encodeURIComponent(modelId)}/hyperparameters`);
+}
+
+export function updateModelHyperparameters(
+  component: ComponentKind,
+  modelId: string,
+  config: Record<string, unknown>,
+): Promise<ModelConfigSaveResponse> {
+  return request<ModelConfigSaveResponse>(
+    `/api/models/${component}/${encodeURIComponent(modelId)}/hyperparameters`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ config }),
+    },
+  );
 }
 
 export function fetchSessions(): Promise<SessionListItem[]> {

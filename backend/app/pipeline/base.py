@@ -14,6 +14,9 @@ class STTEngine(ABC):
     def transcribe(self, audio_path: Path) -> str:
         raise NotImplementedError
 
+    def warmup(self) -> None:
+        return None
+
     def close(self) -> None:
         return None
 
@@ -26,6 +29,9 @@ class LLMEngine(ABC):
     def generate(self, system_prompt: str, history: list[ChatMessage]) -> str:
         raise NotImplementedError
 
+    def warmup(self) -> None:
+        return None
+
     def close(self) -> None:
         return None
 
@@ -37,6 +43,9 @@ class TTSEngine(ABC):
     @abstractmethod
     def synthesize(self, text: str, output_path: Path) -> Path:
         raise NotImplementedError
+
+    def warmup(self) -> None:
+        return None
 
     def close(self) -> None:
         return None
