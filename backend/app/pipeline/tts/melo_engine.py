@@ -39,7 +39,8 @@ class MeloTTSEngine(TTSEngine):
         self.noise_scale = float(config.get("noise_scale", 0.6))
         self.noise_scale_w = float(config.get("noise_scale_w", 0.8))
         self.sentence_pause_ms = int(config.get("sentence_pause_ms", 40))
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        requested_device = str(config.get("device", "gpu")).lower()
+        device = "cuda" if requested_device == "gpu" and torch.cuda.is_available() else "cpu"
         repo_id = LANG_TO_HF_REPO_ID[self.language.split("-")[0].upper()]
         config_path = hf_hub_download(repo_id=repo_id, filename="config.json", local_files_only=True)
         ckpt_path = hf_hub_download(repo_id=repo_id, filename="checkpoint.pth", local_files_only=True)

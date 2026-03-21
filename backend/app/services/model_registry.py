@@ -206,6 +206,7 @@ class ModelRegistry:
                 path=str(path.resolve()),
                 description="Inferred ONNX TTS directory.",
                 config={
+                    "device": "gpu",
                     "model_file": "kokoro-v0_19.onnx",
                     "voices_file": "voices.bin",
                     "voice": "af",
@@ -262,9 +263,11 @@ def _field_templates(manifest: ModelManifest) -> list[ModelConfigField]:
         return [
             ModelConfigField(key="device", label="Device", input_type="select", options=[
                 ModelConfigOption(label="CPU", value="cpu"),
+                ModelConfigOption(label="GPU", value="cuda"),
             ]),
             ModelConfigField(key="compute_type", label="Compute Type", input_type="select", options=[
                 ModelConfigOption(label="int8", value="int8"),
+                ModelConfigOption(label="int8_float16", value="int8_float16"),
                 ModelConfigOption(label="float16", value="float16"),
                 ModelConfigOption(label="float32", value="float32"),
             ]),
@@ -468,6 +471,16 @@ def _field_templates(manifest: ModelManifest) -> list[ModelConfigField]:
     if manifest.provider == "melo":
         return [
             ModelConfigField(
+                key="device",
+                label="Device",
+                input_type="select",
+                options=[
+                    ModelConfigOption(label="GPU", value="gpu"),
+                    ModelConfigOption(label="CPU", value="cpu"),
+                ],
+                description="Choose where speech synthesis runs.",
+            ),
+            ModelConfigField(
                 key="style_prompt",
                 label="Speech Style Prompt",
                 input_type="textarea",
@@ -525,6 +538,16 @@ def _field_templates(manifest: ModelManifest) -> list[ModelConfigField]:
 
     if manifest.provider == "kokoro_onnx":
         return [
+            ModelConfigField(
+                key="device",
+                label="Device",
+                input_type="select",
+                options=[
+                    ModelConfigOption(label="GPU", value="gpu"),
+                    ModelConfigOption(label="CPU", value="cpu"),
+                ],
+                description="Choose the preferred ONNX execution target.",
+            ),
             ModelConfigField(
                 key="style_prompt",
                 label="Speech Style Prompt",

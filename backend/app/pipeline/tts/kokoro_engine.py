@@ -22,6 +22,7 @@ class KokoroTTSEngine(TTSEngine):
             )
 
         config = manifest.config
+        requested_device = str(config.get("device", "gpu")).lower()
         model_file = root / config.get("model_file", "kokoro-v0_19.onnx")
         voices_file = root / config.get("voices_file", "voices.bin")
         if not model_file.exists() or not voices_file.exists():
@@ -29,10 +30,10 @@ class KokoroTTSEngine(TTSEngine):
                 "Kokoro requires both the ONNX model file and voices.bin inside the selected TTS folder."
             )
 
-        os.environ.setdefault(
-            "ONNX_PROVIDER",
-            "CUDAExecutionProvider" if torch.cuda.is_available() else "CPUExecutionProvider",
-        )
+        provider = "CPUExecutionProvider"
+        if requested_device == "gpu" and torch.cuda.is_available():
+            provider = "CUDAExecutionProvider"
+        os.environ["ONNX_PROVIDER"] = provider
         self.voice = config.get("voice", "af")
         self.speed = float(config.get("speed", 1.0))
         self.lang = config.get("lang", "en-us")

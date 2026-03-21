@@ -137,8 +137,8 @@ export default function App() {
       setSelectedTts(
         (current) =>
           current ||
-          nextCatalog.tts.find((item) => item.id.toLowerCase().includes("kokoro"))?.id ||
           nextCatalog.tts.find((item) => item.id.toLowerCase().includes("melo"))?.id ||
+          nextCatalog.tts.find((item) => item.id.toLowerCase().includes("kokoro"))?.id ||
           nextCatalog.tts[0]?.id ||
           "",
       );

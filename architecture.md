@@ -27,7 +27,8 @@ Local-first personalized voice pipeline for your laptop:
   - reply length and decoding remain manifest-configurable through the hyperparameter editor
 - `TTS` runs on `GPU`
   - Available paths: `Melo EN_INDIA` and `Kokoro ONNX`
-  - Current UI default is `Kokoro`, because recent local benchmarks showed better reply-time latency for medium and longer answers
+  - Current verified GPU path on this machine is `Melo EN_INDIA`
+  - `Kokoro` currently falls back to CPU here because ONNX Runtime does not expose `CUDAExecutionProvider`
 
 ### Current Verified Paths
 
@@ -49,7 +50,7 @@ Local-first personalized voice pipeline for your laptop:
     - stop session
 - Available but not the default GPU path:
   - `Kokoro` assets are downloaded locally and synthesis works
-  - in this environment ONNX Runtime exposed CPU provider only, but recent long-reply benchmarks still showed Kokoro as the faster TTS option on this laptop
+  - in this environment ONNX Runtime exposed CPU provider only, so Kokoro is not the active GPU TTS path
 
 ### Project Layout
 
@@ -182,7 +183,7 @@ Current UI defaults:
 
 - `STT`: Faster-Whisper small.en
 - `LLM`: prefer `Q6` or `Q4` GGUF Qwen automatically when present, then fall back to `int8`
-- `TTS`: prefer `Kokoro` automatically for lower long-reply latency
+- `TTS`: prefer `Melo` automatically so speech synthesis stays on the GPU
 - `Silence auto-send`: adjustable in the UI, default `1.0s`
 - `Change Hyperparameters`: opens the dedicated configuration page
 
@@ -200,7 +201,7 @@ This page lets you tune each pipeline stage separately and also edit the global 
   - lets you change the default assistant behavior without editing code
 
 - `STT`
-  - device
+  - device (`cpu` / `cuda`)
   - compute type
   - CPU threads
   - beam size
@@ -222,6 +223,7 @@ This page lets you tune each pipeline stage separately and also edit the global 
     - GPU layers
     - flash attention
 - `TTS`
+  - device (`gpu` / `cpu`)
   - speaker / accent
   - language
   - speed
@@ -510,7 +512,7 @@ The hyperparameter editor also stays compatible with the swappable design becaus
 
 - Whisper stays on CPU and uses fixed thread budgeting so GPU is reserved for generation and speech synthesis
 - Qwen can now run either in Transformers `8-bit` mode or in `llama.cpp` GGUF `Q4/Q6` mode, which fits the 4060 8 GB profile much better than full precision
-- TTS defaults to Kokoro for speed, while Melo remains available when you want a more expressive voice
+- TTS defaults to Melo because that is the verified GPU synthesis path on this machine
 - Session memory is simple and local, so there is no external DB or cloud dependency increasing latency
 - Frontend now uses a silence-aware local recorder, so the interaction feels closer to a live assistant than manual push-to-talk
 - Timing and VRAM counters make bottlenecks visible while tuning the pipeline on this exact laptop
@@ -530,5 +532,5 @@ The hyperparameter editor also stays compatible with the swappable design becaus
 
 - `STT`: `faster-whisper-small-en`
 - `LLM`: `Qwen3.5-4B-Q6_K` for the better speed/quality balance, or `Qwen3.5-4B-Q4_K_M` for a smaller VRAM footprint
-- `TTS`: `kokoro-en-us`
+- `TTS`: `melo-en-india`
 - `Silence auto-send`: `1.0s`
