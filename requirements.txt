@@ -1,0 +1,21 @@
+# Install PyTorch with CUDA 12.1 separately:
+# .venv/bin/pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+fastapi==0.135.1
+uvicorn[standard]==0.42.0
+python-multipart==0.0.22
+pydantic-settings==2.13.1
+aiofiles==25.1.0
+soundfile==0.13.1
+faster-whisper==1.2.1
+transformers[torch]==5.3.0
+accelerate==1.13.0
+bitsandbytes==0.49.2
+sentencepiece==0.2.1
+openai==2.29.0
+huggingface-hub==1.7.2
+safetensors==0.7.0
+kokoro-onnx==0.5.0
+onnxruntime-gpu==1.23.2
+soxr==1.0.0
+setuptools==80.9.0
+
