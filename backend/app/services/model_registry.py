@@ -207,9 +207,12 @@ class ModelRegistry:
                 description="Inferred ONNX TTS directory.",
                 config={
                     "device": "gpu",
+                    "runtime_backend": "auto",
                     "model_file": "kokoro-v0_19.onnx",
                     "voices_file": "voices.bin",
                     "voice": "af",
+                    "native_voice": "af_heart",
+                    "native_lang_code": "a",
                     "speed": 1.0,
                     "lang": "en-us",
                     "style_prompt": "",
@@ -546,7 +549,18 @@ def _field_templates(manifest: ModelManifest) -> list[ModelConfigField]:
                     ModelConfigOption(label="GPU", value="gpu"),
                     ModelConfigOption(label="CPU", value="cpu"),
                 ],
-                description="Choose the preferred ONNX execution target.",
+                description="Choose the preferred Kokoro execution target.",
+            ),
+            ModelConfigField(
+                key="runtime_backend",
+                label="Runtime",
+                input_type="select",
+                options=[
+                    ModelConfigOption(label="Auto", value="auto"),
+                    ModelConfigOption(label="Native KPipeline", value="native"),
+                    ModelConfigOption(label="ONNX Legacy", value="onnx"),
+                ],
+                description="Auto prefers the newer kokoro KPipeline runtime when it is installed, otherwise it falls back to kokoro_onnx.",
             ),
             ModelConfigField(
                 key="style_prompt",
@@ -564,6 +578,20 @@ def _field_templates(manifest: ModelManifest) -> list[ModelConfigField]:
                 label="Voice",
                 input_type="text",
                 placeholder="af",
+            ),
+            ModelConfigField(
+                key="native_voice",
+                label="Native Voice",
+                input_type="text",
+                description="Optional explicit KPipeline voice name, such as af_heart or bf_emma. Leave blank to map the legacy voice automatically.",
+                placeholder="af_heart",
+            ),
+            ModelConfigField(
+                key="native_lang_code",
+                label="Native Lang Code",
+                input_type="text",
+                description="Optional KPipeline language code. Leave blank to infer it from the language variant or voice.",
+                placeholder="a",
             ),
             ModelConfigField(
                 key="speed",

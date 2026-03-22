@@ -244,13 +244,7 @@ class PipelineService:
         key = self._engine_key(component, manifest)
         refs = self._engine_refs.get(key, 0)
         if refs <= 1:
-            if key in self._invalidated_engines:
-                self._invalidated_engines.discard(key)
-                self._dispose_engine(key)
-                return
-            if key in self._engine_cache:
-                self._engine_refs[key] = 0
-                self._engine_idle_since[key] = perf_counter()
+            self._dispose_engine(key)
             return
         self._engine_refs[key] = refs - 1
 
