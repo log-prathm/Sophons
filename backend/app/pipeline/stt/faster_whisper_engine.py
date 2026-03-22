@@ -7,6 +7,7 @@ from pathlib import Path
 from backend.app.core.schemas import ModelManifest
 from backend.app.core.settings import Settings
 from backend.app.pipeline.base import STTEngine
+from backend.app.pipeline.device_utils import ctranslate2_cuda_available, normalize_device_name
 
 
 class FasterWhisperEngine(STTEngine):
@@ -29,9 +30,14 @@ class FasterWhisperEngine(STTEngine):
                 {"min_silence_duration_ms": 500},
             ),
         }
+        device = normalize_device_name(config.get("device", "cpu"), default="cpu")
+        if device == "cuda" and not ctranslate2_cuda_available():
+            raise RuntimeError(
+                "GPU was selected for Faster-Whisper, but CTranslate2 CUDA devices are not available in this environment."
+            )
         self.model = WhisperModel(
             model_source,
-            device=config.get("device", "cpu"),
+            device=device,
             compute_type=config.get("compute_type", "int8"),
             cpu_threads=config.get("cpu_threads", settings.cpu_threads),
             download_root=str(settings.stt_dir),

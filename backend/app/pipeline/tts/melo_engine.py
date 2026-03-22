@@ -8,10 +8,16 @@ import re
 
 import numpy as np
 import soundfile as sf
+
+from backend.app.core.runtime_env import load_runtime_env
+
+load_runtime_env()
+
 import torch
 
 from backend.app.core.schemas import ModelManifest
 from backend.app.pipeline.base import TTSEngine
+from backend.app.pipeline.device_utils import normalize_device_name, torch_cuda_available
 
 
 class MeloTTSEngine(TTSEngine):
@@ -39,8 +45,12 @@ class MeloTTSEngine(TTSEngine):
         self.noise_scale = float(config.get("noise_scale", 0.6))
         self.noise_scale_w = float(config.get("noise_scale_w", 0.8))
         self.sentence_pause_ms = int(config.get("sentence_pause_ms", 40))
-        requested_device = str(config.get("device", "gpu")).lower()
-        device = "cuda" if requested_device == "gpu" and torch.cuda.is_available() else "cpu"
+        requested_device = normalize_device_name(config.get("device", "gpu"), default="gpu")
+        if requested_device == "cuda" and not torch_cuda_available():
+            raise RuntimeError(
+                "GPU was selected for Melo, but PyTorch CUDA is not available in this environment."
+            )
+        device = "cuda" if requested_device == "cuda" else "cpu"
         repo_id = LANG_TO_HF_REPO_ID[self.language.split("-")[0].upper()]
         config_path = hf_hub_download(repo_id=repo_id, filename="config.json", local_files_only=True)
         ckpt_path = hf_hub_download(repo_id=repo_id, filename="checkpoint.pth", local_files_only=True)

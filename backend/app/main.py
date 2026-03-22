@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
+from backend.app.core.runtime_env import load_runtime_env
+
+load_runtime_env()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,4 +26,3 @@ app.include_router(router, prefix=settings.api_prefix)
 frontend_dist = settings.project_root / "frontend" / "dist"
 if frontend_dist.exists():
     app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
-

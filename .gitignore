@@ -19,3 +19,5 @@ models/TTSs/
 sessions/
 
 runtime/benchmarks/.mpeg/
+
+.devcontainer
